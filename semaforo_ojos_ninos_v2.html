@@ -1,0 +1,959 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>🚦 El Semáforo de los Ojos</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Fredoka+One&family=Nunito:wght@700;800;900&display=swap');
+
+:root {
+  --bg:     #fffdf5;
+  --red:    #ff4757;
+  --yellow: #ffb300;
+  --green:  #00c853;
+  --blue:   #2979ff;
+  --purple: #9c27b0;
+  --text:   #263238;
+  --muted:  #90a4ae;
+  --white:  #ffffff;
+  --shadow: 0 8px 32px rgba(0,0,0,0.12);
+}
+
+* { margin:0; padding:0; box-sizing:border-box; }
+
+body {
+  font-family: 'Nunito', 'Segoe UI', Arial, sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  min-height: 100vh;
+  overflow-x: hidden;
+}
+
+/* Fondo decorativo */
+body::before {
+  content:'';
+  position:fixed; inset:0;
+  background:
+    radial-gradient(circle at 15% 15%, rgba(255,71,87,0.06) 0%, transparent 40%),
+    radial-gradient(circle at 85% 85%, rgba(0,200,83,0.06) 0%, transparent 40%),
+    radial-gradient(circle at 50% 50%, rgba(41,121,255,0.04) 0%, transparent 60%);
+  pointer-events:none; z-index:0;
+}
+
+/* Estrellitas de fondo */
+.bg-star {
+  position:fixed; pointer-events:none; z-index:0;
+  font-size:1.2rem; opacity:0.25;
+  animation: twinkle 3s ease-in-out infinite;
+}
+@keyframes twinkle { 0%,100%{opacity:0.15;transform:scale(1);} 50%{opacity:0.4;transform:scale(1.2);} }
+
+/* ══ PANTALLAS ══════════════════════════════════════════ */
+.screen { display:none; }
+.screen.active {
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  min-height:100vh;
+  padding:24px 20px 48px;
+  gap:18px;
+  position:relative; z-index:1;
+}
+
+/* ══ MASCOTA ═════════════════════════════════════════════ */
+.mascot-area {
+  position:relative;
+  display:flex; justify-content:center;
+}
+
+.mascot-svg {
+  width:120px; height:120px;
+  filter:drop-shadow(0 8px 20px rgba(0,0,0,0.15));
+  animation: idle 3s ease-in-out infinite;
+}
+@keyframes idle { 0%,100%{transform:translateY(0) rotate(-2deg);} 50%{transform:translateY(-10px) rotate(2deg);} }
+@keyframes jump  { 0%{transform:scale(1)rotate(0deg);} 30%{transform:scale(1.35)rotate(-10deg);} 60%{transform:scale(1.2)rotate(10deg);} 100%{transform:scale(1)rotate(0deg);} }
+@keyframes droop { 0%,100%{transform:translateY(0);} 40%{transform:translateY(10px) rotate(-4deg);} }
+
+.mascot-svg.happy { animation:jump 0.5s ease-in-out; }
+.mascot-svg.sad   { animation:droop 0.5s ease-in-out; }
+
+.bubble {
+  position:absolute;
+  top:-8px; left:50%;
+  transform:translateX(55px);
+  background:white;
+  border:2px solid #e0e0e0;
+  border-radius:18px;
+  padding:8px 12px;
+  font-size:0.82rem; font-weight:800;
+  box-shadow:0 4px 12px rgba(0,0,0,0.10);
+  white-space:nowrap;
+  opacity:0; pointer-events:none;
+  transition:opacity 0.3s;
+  z-index:10; max-width:180px; white-space:normal; text-align:center;
+}
+.bubble::before {
+  content:'';
+  position:absolute;
+  left:-11px; top:12px;
+  border:6px solid transparent;
+  border-right-color:white;
+}
+.bubble.on { opacity:1; }
+
+/* ══ INICIO ══════════════════════════════════════════════ */
+.brand {
+  font-family:'Fredoka One', cursive;
+  font-size:clamp(2rem,8vw,3.4rem);
+  line-height:1.05; text-align:center;
+  background:linear-gradient(135deg, var(--red), var(--yellow), var(--green));
+  -webkit-background-clip:text; -webkit-text-fill-color:transparent;
+  background-clip:text;
+}
+
+.subtitle {
+  font-size:0.97rem; color:var(--muted);
+  text-align:center; max-width:300px;
+  font-weight:800; line-height:1.5;
+}
+
+/* Semáforo decorativo */
+.tl-deco-wrap { display:flex; flex-direction:column; align-items:center; }
+.tl-body {
+  background:#263238;
+  border-radius:26px; padding:16px 20px;
+  display:flex; flex-direction:column; gap:13px;
+  box-shadow:0 12px 40px rgba(0,0,0,0.25), inset 0 2px 4px rgba(255,255,255,0.08);
+  border:3px solid #1c2a32;
+}
+.tl-bulb {
+  width:56px; height:56px; border-radius:50%;
+  background:#111;
+  border:3px solid rgba(255,255,255,0.06);
+  transition:all 0.4s;
+  position:relative; overflow:visible;
+}
+.tl-bulb.on::after {
+  content:'';
+  position:absolute; inset:-5px;
+  border-radius:50%;
+  animation:ring 1s ease-out infinite;
+}
+.tl-bulb.on-r { background:var(--red);    box-shadow:0 0 28px 8px rgba(255,71,87,0.55); }
+.tl-bulb.on-r::after  { background:rgba(255,71,87,0.25); }
+.tl-bulb.on-y { background:var(--yellow); box-shadow:0 0 28px 8px rgba(255,179,0,0.55); }
+.tl-bulb.on-y::after  { background:rgba(255,179,0,0.25); }
+.tl-bulb.on-g { background:var(--green);  box-shadow:0 0 28px 8px rgba(0,200,83,0.55); }
+.tl-bulb.on-g::after  { background:rgba(0,200,83,0.25); }
+@keyframes ring { 0%{transform:scale(1);opacity:0.7;} 100%{transform:scale(1.6);opacity:0;} }
+.tl-pole { width:12px; height:55px; background:#263238; border-radius:6px; }
+.tl-base { width:56px; height:16px; background:#263238; border-radius:10px; }
+
+/* Leyenda */
+.legend { display:flex; flex-direction:column; gap:10px; width:100%; max-width:360px; }
+.leg-card {
+  display:flex; align-items:center; gap:12px;
+  background:white; border-radius:16px;
+  padding:12px 16px;
+  box-shadow:0 3px 12px rgba(0,0,0,0.07);
+  border:2px solid transparent;
+  transition:transform 0.2s;
+}
+.leg-card:hover { transform:translateX(6px); }
+.leg-card.r { border-color:rgba(255,71,87,0.25); }
+.leg-card.y { border-color:rgba(255,179,0,0.25); }
+.leg-card.g { border-color:rgba(0,200,83,0.25); }
+.leg-icon { font-size:1.5rem; width:36px; text-align:center; }
+.leg-txt strong { display:block; font-size:0.9rem; }
+.leg-txt span { font-size:0.75rem; color:var(--muted); font-weight:700; }
+.leg-txt strong.r { color:var(--red); }
+.leg-txt strong.y { color:#e65100; }
+.leg-txt strong.g { color:#1b5e20; }
+
+/* Botón jugar */
+.btn-play {
+  background:linear-gradient(135deg, #ff6b9d, var(--purple));
+  color:white; border:none;
+  font-family:'Fredoka One', cursive;
+  font-size:1.5rem; letter-spacing:1px;
+  padding:17px 58px; border-radius:50px;
+  cursor:pointer;
+  box-shadow:0 8px 0 rgba(0,0,0,0.18), 0 12px 30px rgba(156,39,176,0.35);
+  transition:all 0.15s; position:relative; top:0;
+}
+.btn-play:hover { transform:translateY(-4px); box-shadow:0 12px 0 rgba(0,0,0,0.18), 0 18px 40px rgba(156,39,176,0.4); }
+.btn-play:active { transform:translateY(3px); box-shadow:0 4px 0 rgba(0,0,0,0.18); }
+
+/* ══ HUD ═════════════════════════════════════════════════ */
+.hud {
+  display:flex; justify-content:space-between; align-items:center;
+  width:100%; max-width:560px;
+  background:white; border-radius:20px;
+  padding:12px 18px;
+  box-shadow:var(--shadow);
+}
+.hud-blk { display:flex; flex-direction:column; align-items:center; gap:2px; }
+.hud-lbl { font-size:0.58rem; letter-spacing:2px; text-transform:uppercase; color:var(--muted); font-weight:800; }
+.hud-val { font-family:'Fredoka One', cursive; font-size:1.7rem; line-height:1; color:var(--blue); }
+.lives { display:flex; gap:3px; font-size:1.2rem; }
+
+/* Timer */
+.timer { position:relative; width:56px; height:56px; }
+.timer svg { width:56px; height:56px; transform:rotate(-90deg); }
+.t-bg   { fill:none; stroke:#f0f0f0; stroke-width:5; }
+.t-ring { fill:none; stroke:var(--green); stroke-width:5; stroke-linecap:round; stroke-dasharray:138; stroke-dashoffset:0; transition:stroke-dashoffset 0.1s linear, stroke 0.3s; }
+.t-num  { position:absolute; inset:0; display:flex; align-items:center; justify-content:center; font-family:'Fredoka One',cursive; font-size:1.15rem; }
+
+/* Estrellas progreso */
+.star-row { display:flex; gap:5px; justify-content:center; flex-wrap:wrap; }
+.star-item { font-size:1.3rem; filter:grayscale(1) opacity(0.3); transition:all 0.3s; }
+.star-item.got { filter:none; animation:star-pop 0.4s cubic-bezier(.36,.07,.19,.97); }
+@keyframes star-pop { 0%{transform:scale(0)rotate(-30deg);} 60%{transform:scale(1.4)rotate(10deg);} 100%{transform:scale(1)rotate(0deg);} }
+
+/* ══ TARJETA PREGUNTA ════════════════════════════════════ */
+.q-card {
+  background:white; border-radius:26px;
+  padding:26px 20px 22px;
+  width:100%; max-width:540px;
+  text-align:center;
+  box-shadow:0 10px 36px rgba(0,0,0,0.09);
+  border:3px solid transparent;
+  position:relative; overflow:hidden;
+  animation:card-in 0.45s cubic-bezier(.22,1,.36,1) both;
+}
+.q-card::before {
+  content:'';
+  position:absolute; top:0; left:0; right:0; height:5px;
+  background:linear-gradient(90deg, var(--red), var(--yellow), var(--green));
+}
+@keyframes card-in { from{opacity:0;transform:scale(0.88)translateY(18px);} to{opacity:1;transform:scale(1)translateY(0);} }
+@keyframes card-shake { 0%,100%{transform:translateX(0);} 20%{transform:translateX(-12px)rotate(-2deg);} 40%{transform:translateX(12px)rotate(2deg);} 60%{transform:translateX(-7px);} 80%{transform:translateX(7px);} }
+
+.q-emoji { font-size:66px; display:block; margin-bottom:8px; animation:wobble 2.5s ease-in-out infinite; filter:drop-shadow(0 4px 8px rgba(0,0,0,0.10)); }
+@keyframes wobble { 0%,100%{transform:rotate(-5deg)scale(1);} 50%{transform:rotate(5deg)scale(1.07);} }
+
+.q-num { display:inline-block; background:#f5f5f5; border-radius:30px; padding:4px 14px; font-size:0.7rem; font-weight:800; color:var(--muted); margin-bottom:10px; }
+.q-cat { font-size:0.62rem; letter-spacing:3px; text-transform:uppercase; color:var(--muted); font-weight:800; margin-bottom:7px; }
+.q-title { font-family:'Fredoka One',cursive; font-size:clamp(1.2rem,4vw,1.6rem); margin-bottom:8px; line-height:1.2; }
+.q-desc { font-size:0.86rem; color:#607d8b; line-height:1.6; font-weight:700; }
+
+/* ══ BOTONES SEMÁFORO ════════════════════════════════════ */
+.btn-row {
+  display:grid; grid-template-columns:1fr 1fr 1fr;
+  gap:10px; width:100%; max-width:540px;
+}
+.sem-btn {
+  border:none; border-radius:22px;
+  padding:16px 8px 12px;
+  cursor:pointer;
+  display:flex; flex-direction:column;
+  align-items:center; gap:9px;
+  font-family:'Fredoka One',cursive;
+  font-size:0.9rem; letter-spacing:0.5px;
+  transition:all 0.15s;
+  position:relative; top:0;
+}
+.sem-btn:hover { transform:translateY(-5px); }
+.sem-btn:active { transform:translateY(3px); }
+
+.big-dot {
+  width:46px; height:46px; border-radius:50%;
+  display:flex; align-items:center; justify-content:center;
+  font-size:1.4rem;
+  box-shadow:inset 0 3px 8px rgba(0,0,0,0.2), 0 3px 0 rgba(0,0,0,0.15);
+}
+
+.btn-r { background:rgba(255,71,87,0.1); border:3px solid rgba(255,71,87,0.3); color:var(--red); box-shadow:0 6px 0 rgba(255,71,87,0.2); }
+.btn-r .big-dot { background:var(--red); }
+.btn-r:hover { background:rgba(255,71,87,0.18); }
+
+.btn-y { background:rgba(255,179,0,0.1); border:3px solid rgba(255,179,0,0.3); color:#e65100; box-shadow:0 6px 0 rgba(255,179,0,0.2); }
+.btn-y .big-dot { background:var(--yellow); }
+.btn-y:hover { background:rgba(255,179,0,0.18); }
+
+.btn-g { background:rgba(0,200,83,0.1); border:3px solid rgba(0,200,83,0.3); color:#1b5e20; box-shadow:0 6px 0 rgba(0,200,83,0.2); }
+.btn-g .big-dot { background:var(--green); }
+.btn-g:hover { background:rgba(0,200,83,0.18); }
+
+/* ══ SEMÁFORO MINI (lateral) ═════════════════════════════ */
+.tl-mini {
+  position:fixed; right:14px; top:50%; transform:translateY(-50%);
+  background:#263238; border-radius:18px;
+  padding:10px 12px; display:flex; flex-direction:column; gap:9px;
+  box-shadow:0 8px 24px rgba(0,0,0,0.25);
+  z-index:50;
+}
+.tm-light {
+  width:28px; height:28px; border-radius:50%;
+  background:#111;
+  transition:all 0.3s;
+}
+.tm-light.on-r { background:var(--red);    box-shadow:0 0 14px 4px rgba(255,71,87,0.5); }
+.tm-light.on-y { background:var(--yellow); box-shadow:0 0 14px 4px rgba(255,179,0,0.5); }
+.tm-light.on-g { background:var(--green);  box-shadow:0 0 14px 4px rgba(0,200,83,0.5); }
+
+/* ══ OVERLAY FEEDBACK ════════════════════════════════════ */
+.overlay {
+  position:fixed; inset:0; z-index:200;
+  display:flex; align-items:center; justify-content:center; padding:20px;
+  background:rgba(255,253,245,0.82);
+  backdrop-filter:blur(10px);
+  opacity:0; pointer-events:none;
+  transition:opacity 0.25s;
+}
+.overlay.on { opacity:1; pointer-events:all; }
+
+.fb-card {
+  background:white; border-radius:28px;
+  padding:28px 22px 22px;
+  max-width:400px; width:100%;
+  text-align:center;
+  box-shadow:0 20px 60px rgba(0,0,0,0.15);
+  border:4px solid #e0e0e0;
+  animation:fb-pop 0.4s cubic-bezier(.22,1,.36,1);
+}
+@keyframes fb-pop { from{transform:scale(0.7)rotate(-4deg);opacity:0;} to{transform:scale(1)rotate(0deg);opacity:1;} }
+.fb-card.exact { border-color:var(--green); }
+.fb-card.close { border-color:var(--yellow); }
+.fb-card.wrong { border-color:var(--red); }
+
+.fb-tl { display:flex; gap:8px; justify-content:center; margin-bottom:12px; }
+.fb-dot { width:22px; height:22px; border-radius:50%; opacity:0.2; }
+.fb-dot.on-r { background:var(--red);    opacity:1; box-shadow:0 0 10px rgba(255,71,87,0.5); }
+.fb-dot.on-y { background:var(--yellow); opacity:1; box-shadow:0 0 10px rgba(255,179,0,0.5); }
+.fb-dot.on-g { background:var(--green);  opacity:1; box-shadow:0 0 10px rgba(0,200,83,0.5); }
+
+.fb-icon { font-size:56px; display:block; margin-bottom:6px; }
+.fb-verdict { font-family:'Fredoka One',cursive; font-size:1.3rem; margin-bottom:4px; }
+.fb-verdict.exact { color:var(--green); }
+.fb-verdict.close { color:#e65100; }
+.fb-verdict.wrong { color:var(--red); }
+
+.fb-badge {
+  display:inline-flex; align-items:center; gap:6px;
+  padding:5px 14px; border-radius:30px;
+  font-weight:800; font-size:0.8rem; margin-bottom:12px;
+}
+.fb-badge.r { background:rgba(255,71,87,0.1); color:var(--red); border:2px solid rgba(255,71,87,0.25); }
+.fb-badge.y { background:rgba(255,179,0,0.1); color:#e65100; border:2px solid rgba(255,179,0,0.25); }
+.fb-badge.g { background:rgba(0,200,83,0.1); color:#1b5e20; border:2px solid rgba(0,200,83,0.25); }
+
+.fb-title { font-family:'Fredoka One',cursive; font-size:1.15rem; margin-bottom:8px; }
+.fb-exp   { font-size:0.84rem; color:#607d8b; line-height:1.65; margin-bottom:10px; font-weight:700; }
+.fb-tip   {
+  background:#f9fbe7; border:2px dashed #c5e1a5;
+  border-radius:14px; padding:10px 13px;
+  font-size:0.79rem; color:#558b2f;
+  text-align:left; line-height:1.5; font-weight:700; margin-bottom:14px;
+}
+.fb-tip::before { content:'💡 '; }
+.fb-pts { font-family:'Fredoka One',cursive; font-size:1.4rem; margin-bottom:14px; }
+.fb-pts.exact { color:var(--green); }
+.fb-pts.close { color:#e65100; }
+.fb-pts.wrong { color:var(--red); }
+
+.btn-next {
+  background:linear-gradient(135deg, var(--blue), var(--purple));
+  color:white; border:none;
+  font-family:'Fredoka One',cursive;
+  font-size:1.15rem; padding:13px 40px;
+  border-radius:50px; cursor:pointer;
+  box-shadow:0 6px 0 rgba(0,0,0,0.15);
+  transition:all 0.15s;
+}
+.btn-next:hover { transform:translateY(-3px); }
+.btn-next:active { transform:translateY(2px); box-shadow:0 2px 0 rgba(0,0,0,0.15); }
+
+/* ══ RESULTADO ═══════════════════════════════════════════ */
+.res-title { font-family:'Fredoka One',cursive; font-size:clamp(1.6rem,6vw,2.8rem); text-align:center; }
+.res-stars { display:flex; gap:6px; font-size:2.2rem; justify-content:center; }
+.res-tl    { display:flex; gap:14px; justify-content:center; }
+.res-tl-dot { width:42px; height:42px; border-radius:50%; }
+.res-score { font-family:'Fredoka One',cursive; font-size:clamp(4rem,14vw,7rem); line-height:1; }
+.res-sub   { font-size:0.63rem; letter-spacing:3px; text-transform:uppercase; color:var(--muted); font-weight:800; }
+.res-msg   { font-size:0.97rem; font-weight:700; color:#607d8b; max-width:320px; text-align:center; line-height:1.6; }
+
+.stats { display:grid; grid-template-columns:repeat(3,1fr); gap:10px; width:100%; max-width:380px; }
+.stat-box { background:white; border-radius:16px; padding:14px 8px; text-align:center; box-shadow:var(--shadow); }
+.stat-val { font-family:'Fredoka One',cursive; font-size:1.9rem; line-height:1; }
+.stat-lbl { font-size:0.62rem; letter-spacing:2px; text-transform:uppercase; color:var(--muted); font-weight:800; }
+
+.btn-restart {
+  background:white; border:3px solid #e0e0e0;
+  font-family:'Fredoka One',cursive;
+  font-size:1.15rem; color:var(--text);
+  padding:13px 40px; border-radius:50px;
+  cursor:pointer;
+  box-shadow:0 5px 0 #e0e0e0;
+  transition:all 0.15s;
+}
+.btn-restart:hover { background:#f5f5f5; transform:translateY(-3px); }
+.btn-restart:active { transform:translateY(2px); box-shadow:0 2px 0 #e0e0e0; }
+
+/* ══ EFECTOS ══════════════════════════════════════════════ */
+.confetti {
+  position:fixed; top:-12px;
+  pointer-events:none; z-index:500;
+  border-radius:3px;
+  animation:cfall linear forwards;
+}
+@keyframes cfall { 0%{transform:translateY(0)rotate(0deg);opacity:1;} 80%{opacity:1;} 100%{transform:translateY(105vh)rotate(720deg);opacity:0;} }
+
+.sparkle {
+  position:fixed; pointer-events:none; z-index:400;
+  font-size:24px; animation:sfly 0.85s ease-out forwards;
+}
+@keyframes sfly { from{opacity:1;transform:translateY(0)scale(1);} to{opacity:0;transform:translateY(-140px)scale(0.1)rotate(180deg);} }
+</style>
+</head>
+<body>
+
+<!-- Estrellitas fondo -->
+<script>
+['⭐','🌟','✨','💫'].forEach((e,i)=>{
+  [15,35,55,75,90].forEach(x=>{
+    const d=document.createElement('div');
+    d.className='bg-star'; d.textContent=e;
+    d.style.left=x+'%'; d.style.top=(10+i*22)+'%';
+    d.style.animationDelay=(Math.random()*3)+'s';
+    d.style.animationDuration=(2+Math.random()*2)+'s';
+    document.body.appendChild(d);
+  });
+});
+</script>
+
+<!-- Semáforo mini lateral (juego) -->
+<div class="tl-mini" id="tl-mini" style="display:none">
+  <div class="tm-light" id="tm-r"></div>
+  <div class="tm-light" id="tm-y"></div>
+  <div class="tm-light" id="tm-g"></div>
+</div>
+
+<!-- ════ INICIO ═══════════════════════════════════════════ -->
+<div class="screen active" id="s-start">
+
+  <div class="mascot-area">
+    <svg class="mascot-svg" viewBox="0 0 130 130" xmlns="http://www.w3.org/2000/svg">
+      <ellipse cx="65" cy="72" rx="52" ry="48" fill="#fff" stroke="#ffb300" stroke-width="5"/>
+      <circle cx="65" cy="72" r="28" fill="#2979ff"/>
+      <circle cx="65" cy="72" r="15" fill="#1a1a2e"/>
+      <circle cx="72" cy="63" r="6" fill="white" opacity="0.9"/>
+      <circle cx="76" cy="69" r="3" fill="white" opacity="0.6"/>
+      <path d="M35 37 Q50 29 63 34" stroke="#ffb300" stroke-width="5" stroke-linecap="round" fill="none"/>
+      <path d="M67 34 Q80 29 95 37" stroke="#ffb300" stroke-width="5" stroke-linecap="round" fill="none"/>
+      <line x1="41" y1="40" x2="36" y2="32" stroke="#ffb300" stroke-width="3" stroke-linecap="round"/>
+      <line x1="52" y1="34" x2="49" y2="25" stroke="#ffb300" stroke-width="3" stroke-linecap="round"/>
+      <line x1="62" y1="32" x2="61" y2="22" stroke="#ffb300" stroke-width="3" stroke-linecap="round"/>
+      <line x1="89" y1="40" x2="94" y2="32" stroke="#ffb300" stroke-width="3" stroke-linecap="round"/>
+      <line x1="78" y1="34" x2="81" y2="25" stroke="#ffb300" stroke-width="3" stroke-linecap="round"/>
+      <line x1="68" y1="32" x2="69" y2="22" stroke="#ffb300" stroke-width="3" stroke-linecap="round"/>
+      <path d="M48 100 Q65 114 82 100" stroke="#ffb300" stroke-width="5" stroke-linecap="round" fill="none"/>
+      <ellipse cx="18" cy="80" rx="12" ry="10" fill="#fff" stroke="#ffb300" stroke-width="4"/>
+      <ellipse cx="112" cy="80" rx="12" ry="10" fill="#fff" stroke="#ffb300" stroke-width="4"/>
+      <text x="2" y="38" font-size="15">⭐</text>
+      <text x="108" y="38" font-size="13">✨</text>
+    </svg>
+    <div class="bubble on" id="bub-start">¡Hola! Soy Oculín 👋</div>
+  </div>
+
+  <div class="brand">🚦 El Semáforo<br>de los Ojos</div>
+  <p class="subtitle">¡Aprende qué cosas cuidan o dañan tus ojitos usando el semáforo! 👁️</p>
+
+  <div class="tl-deco-wrap">
+    <div class="tl-body">
+      <div class="tl-bulb on on-r" id="dl-r"></div>
+      <div class="tl-bulb" id="dl-y"></div>
+      <div class="tl-bulb" id="dl-g"></div>
+    </div>
+    <div class="tl-pole"></div>
+    <div class="tl-base"></div>
+  </div>
+
+  <div class="legend">
+    <div class="leg-card r">
+      <div class="leg-icon">🔴</div>
+      <div class="leg-txt">
+        <strong class="r">¡PELIGRO! — Rojo</strong>
+        <span>Esto daña tus ojos. ¡Evítalo!</span>
+      </div>
+    </div>
+    <div class="leg-card y">
+      <div class="leg-icon">🟡</div>
+      <div class="leg-txt">
+        <strong class="y">¡CUIDADO! — Amarillo</strong>
+        <span>Solo con mucho cuidado.</span>
+      </div>
+    </div>
+    <div class="leg-card g">
+      <div class="leg-icon">🟢</div>
+      <div class="leg-txt">
+        <strong class="g">¡GENIAL! — Verde</strong>
+        <span>Protege y cuida tus ojos. ✔</span>
+      </div>
+    </div>
+  </div>
+
+  <button class="btn-play" id="btn-play">▶ ¡A JUGAR!</button>
+</div>
+
+<!-- ════ JUEGO ════════════════════════════════════════════ -->
+<div class="screen" id="s-game">
+
+  <div class="hud">
+    <div class="hud-blk">
+      <span class="hud-lbl">⭐ Puntos</span>
+      <span class="hud-val" id="score-val">0</span>
+    </div>
+    <div class="timer">
+      <svg viewBox="0 0 56 56">
+        <circle class="t-bg"  cx="28" cy="28" r="22"/>
+        <circle class="t-ring" id="t-ring" cx="28" cy="28" r="22"/>
+      </svg>
+      <div class="t-num" id="t-num">15</div>
+    </div>
+    <div class="hud-blk">
+      <span class="hud-lbl">❤️ Vidas</span>
+      <div class="lives" id="lives">❤️❤️❤️</div>
+    </div>
+  </div>
+
+  <div class="star-row" id="star-row"></div>
+
+  <div class="mascot-area">
+    <svg class="mascot-svg" id="mascot-g" viewBox="0 0 130 130" xmlns="http://www.w3.org/2000/svg">
+      <ellipse cx="65" cy="72" rx="52" ry="48" fill="#fff" stroke="#ffb300" stroke-width="5"/>
+      <circle cx="65" cy="72" r="28" fill="#2979ff"/>
+      <circle cx="65" cy="72" r="15" fill="#1a1a2e"/>
+      <circle cx="72" cy="63" r="6" fill="white" opacity="0.9"/>
+      <circle cx="76" cy="69" r="3" fill="white" opacity="0.6"/>
+      <path d="M35 37 Q50 29 63 34" stroke="#ffb300" stroke-width="5" stroke-linecap="round" fill="none"/>
+      <path d="M67 34 Q80 29 95 37" stroke="#ffb300" stroke-width="5" stroke-linecap="round" fill="none"/>
+      <line x1="41" y1="40" x2="36" y2="32" stroke="#ffb300" stroke-width="3" stroke-linecap="round"/>
+      <line x1="52" y1="34" x2="49" y2="25" stroke="#ffb300" stroke-width="3" stroke-linecap="round"/>
+      <line x1="89" y1="40" x2="94" y2="32" stroke="#ffb300" stroke-width="3" stroke-linecap="round"/>
+      <line x1="78" y1="34" x2="81" y2="25" stroke="#ffb300" stroke-width="3" stroke-linecap="round"/>
+      <path id="gmouth" d="M48 100 Q65 114 82 100" stroke="#ffb300" stroke-width="5" stroke-linecap="round" fill="none"/>
+      <ellipse cx="18" cy="80" rx="12" ry="10" fill="#fff" stroke="#ffb300" stroke-width="4"/>
+      <ellipse cx="112" cy="80" rx="12" ry="10" fill="#fff" stroke="#ffb300" stroke-width="4"/>
+    </svg>
+    <div class="bubble" id="bub-g"></div>
+  </div>
+
+  <div class="q-card" id="q-card">
+    <div class="q-num" id="q-num">Pregunta 1 de 10</div>
+    <span class="q-emoji" id="q-emoji">👁️</span>
+    <div class="q-cat" id="q-cat">// Categoría</div>
+    <div class="q-title" id="q-title">Cargando...</div>
+    <div class="q-desc" id="q-desc"></div>
+  </div>
+
+  <div class="btn-row">
+    <button class="sem-btn btn-r" id="b-r">
+      <div class="big-dot">🚫</div>¡MALO!
+    </button>
+    <button class="sem-btn btn-y" id="b-y">
+      <div class="big-dot">⚠️</div>CON CUIDADO
+    </button>
+    <button class="sem-btn btn-g" id="b-g">
+      <div class="big-dot">✅</div>¡BUENO!
+    </button>
+  </div>
+
+</div>
+
+<!-- ════ OVERLAY FEEDBACK ═════════════════════════════════ -->
+<div class="overlay" id="overlay">
+  <div class="fb-card" id="fb-card">
+    <div class="fb-tl">
+      <div class="fb-dot" id="fd-r" style="background:var(--red)"></div>
+      <div class="fb-dot" id="fd-y" style="background:var(--yellow)"></div>
+      <div class="fb-dot" id="fd-g" style="background:var(--green)"></div>
+    </div>
+    <span class="fb-icon" id="fb-icon">🎉</span>
+    <div class="fb-verdict" id="fb-verdict">¡CORRECTO!</div>
+    <div class="fb-badge" id="fb-badge">🟢 Respuesta correcta</div>
+    <div class="fb-title" id="fb-title">Título</div>
+    <div class="fb-exp" id="fb-exp">Explicación.</div>
+    <div class="fb-tip" id="fb-tip">Tip.</div>
+    <div class="fb-pts" id="fb-pts">+100 ⭐</div>
+    <button class="btn-next" id="btn-next">¡Siguiente! →</button>
+  </div>
+</div>
+
+<!-- ════ RESULTADO ════════════════════════════════════════ -->
+<div class="screen" id="s-result">
+
+  <div class="mascot-area">
+    <svg class="mascot-svg" viewBox="0 0 130 130" xmlns="http://www.w3.org/2000/svg">
+      <ellipse cx="65" cy="72" rx="52" ry="48" fill="#fff" stroke="#ffb300" stroke-width="5"/>
+      <circle cx="65" cy="72" r="28" fill="#2979ff"/>
+      <circle cx="65" cy="72" r="15" fill="#1a1a2e"/>
+      <circle cx="72" cy="63" r="6" fill="white" opacity="0.9"/>
+      <circle cx="76" cy="69" r="3" fill="white" opacity="0.6"/>
+      <path d="M34 32 Q50 24 63 30" stroke="#ffb300" stroke-width="5" stroke-linecap="round" fill="none"/>
+      <path d="M67 30 Q80 24 96 32" stroke="#ffb300" stroke-width="5" stroke-linecap="round" fill="none"/>
+      <path d="M46 108 Q65 124 84 108" stroke="#ffb300" stroke-width="5" stroke-linecap="round" fill="none"/>
+      <ellipse cx="18" cy="80" rx="12" ry="10" fill="#fff" stroke="#ffb300" stroke-width="4"/>
+      <ellipse cx="112" cy="80" rx="12" ry="10" fill="#fff" stroke="#ffb300" stroke-width="4"/>
+      <text x="2" y="38" font-size="15">🌟</text>
+      <text x="108" y="38" font-size="13">⭐</text>
+      <text x="104" y="115" font-size="13">✨</text>
+    </svg>
+  </div>
+
+  <div class="res-title" id="res-title">¡Muy bien!</div>
+  <div class="res-stars" id="res-stars">⭐</div>
+  <div class="res-tl" id="res-tl"></div>
+  <div class="res-score" id="res-score">0</div>
+  <div class="res-sub">PUNTOS TOTALES</div>
+  <p class="res-msg" id="res-msg"></p>
+  <div class="stats">
+    <div class="stat-box"><div class="stat-val" id="st-e" style="color:var(--green)">0</div><div class="stat-lbl">Exactas ✅</div></div>
+    <div class="stat-box"><div class="stat-val" id="st-c" style="color:var(--yellow)">0</div><div class="stat-lbl">Cercanas ⚠️</div></div>
+    <div class="stat-box"><div class="stat-val" id="st-w" style="color:var(--red)">0</div><div class="stat-lbl">Fallidas ❌</div></div>
+  </div>
+  <button class="btn-restart" id="btn-restart">↺ ¡Jugar otra vez!</button>
+
+</div>
+
+<script>
+// ── PREGUNTAS ──────────────────────────────────────────────────────────────
+var QS = [
+  {e:"📱",c:"Pantallas",t:"Usar el celu en la oscuridad",d:"Ver el teléfono con mucho brillo cuando está todo apagado.",col:"red",ex:"La pantalla brillante en la oscuridad cansa mucho los ojos. ¡Es como mirar una linterna directo!",tip:"Enciende una lamparita cuando uses pantallas de noche."},
+  {e:"🌞",c:"Sol",t:"Mirar al sol sin gafas",d:"Salir al sol mucho tiempo sin protección en los ojos.",col:"red",ex:"Los rayos del sol pueden quemar los ojos igual que queman la piel. ¡Muy peligroso!",tip:"Usa siempre lentes de sol con protección UV cuando salgas afuera."},
+  {e:"✋",c:"Higiene",t:"Frotarse los ojos con fuerza",d:"Rascarse los ojos cuando pican o cuando estás cansado.",col:"red",ex:"Las manos tienen millones de microbios. ¡Frotarte los ojos puede infectarlos y lastimarlos!",tip:"Si te pican los ojos, usa agua limpia o gotitas. Nunca los frotes."},
+  {e:"🚬",c:"Salud",t:"Respirar humo de cigarrillo",d:"Estar donde hay mucho humo de tabaco.",col:"red",ex:"El humo del cigarrillo irrita los ojos y daña los vasos sanguíneos que los alimentan.",tip:"El humo es malo para los ojos, la boca y los pulmones. ¡Aléjate!"},
+  {e:"💡",c:"Iluminación",t:"Leer con poca luz",d:"Leer un libro en un cuarto muy oscuro donde casi no se ve.",col:"red",ex:"Leer con poca luz hace que tus ojos trabajen el doble y se cansen muy rápido.",tip:"Siempre lee con una buena luz. ¡La luz del día natural es perfecta!"},
+  {e:"📺",c:"Pantallas",t:"Ver tele a distancia normal",d:"Ver televisión sentado lejos, con algo de luz en la sala.",col:"yellow",ex:"A distancia normal no es tan dañino, pero sin descansos tus ojos igual se cansan.",tip:"Descansa los ojos cada 20 minutos mirando algo lejos por 20 segundos."},
+  {e:"🌙",c:"Pantallas",t:"Modo oscuro en la pantalla",d:"Usar el modo noche o filtro de luz azul en el celular.",col:"yellow",ex:"El modo oscuro ayuda un poco, pero la pantalla igual puede cansar los ojos si la usas mucho.",tip:"Lo mejor es no usar pantallas una hora antes de dormir."},
+  {e:"🏊",c:"Deportes",t:"Nadar sin gafas de piscina",d:"Abrir los ojos dentro del agua de la piscina.",col:"yellow",ex:"El cloro del agua puede irritar tus ojos. No es peligroso en poco tiempo, pero sí molesta.",tip:"¡Las gafas de natación son tu mejor amiga en la piscina!"},
+  {e:"📖",c:"Hábitos",t:"Leer en el bus o carro",d:"Leer mientras el vehículo se mueve.",col:"yellow",ex:"El movimiento hace que tus ojos trabajen más para enfocar. Puede causar mareos y cansancio.",tip:"¡Mejor escucha un cuento o música mientras vas en el bus!"},
+  {e:"💧",c:"Cuidado",t:"Usar gotitas para los ojos secos",d:"Aplicar gotas de lágrimas artificiales cuando los ojos pican.",col:"green",ex:"Las gotitas limpian y humectan tus ojos. ¡Son como agua fresca para tus ojitos!",tip:"Si tus ojos se sienten secos o irritados, las gotitas de lágrimas artificiales ayudan mucho."},
+  {e:"😴",c:"Descanso",t:"Dormir 8 horas cada noche",d:"Acostarte temprano y dormir todas las horas que necesitas.",col:"green",ex:"Mientras duermes, tus ojos descansan y se recuperan completamente. ¡Es su recarga!",tip:"Los niños necesitan entre 8 y 10 horas de sueño para estar sanos."},
+  {e:"🥕",c:"Alimentación",t:"Comer zanahorias y verduras",d:"Incluir zanahoria, espinaca y brócoli en tus comidas.",col:"green",ex:"La zanahoria tiene vitamina A que ayuda a ver bien. ¡Come como un conejito!",tip:"Los huevos, el pescado y los arándanos también son muy buenos para los ojos."},
+  {e:"⏰",c:"Descanso visual",t:"Descansar los ojos cada 20 min",d:"Mirar lejos 20 segundos cada 20 minutos de pantalla.",col:"green",ex:"¡Es como dejar respirar a tus ojos! El músculo que enfoca necesita ese descanso.",tip:"Mira por la ventana o algo lejano. ¡Cuenta 20 segundos!"},
+  {e:"🌳",c:"Actividad",t:"Jugar afuera con luz natural",d:"Pasar tiempo al aire libre durante el día.",col:"green",ex:"La luz natural es excelente para los ojos. ¡Además ayuda a prevenir la miopía en niños!",tip:"Los niños que juegan más afuera tienen menos probabilidad de necesitar lentes."},
+  {e:"🔍",c:"Revisiones",t:"Ir al médico de los ojos",d:"Hacerse una revisión con el oftalmólogo una vez al año.",col:"green",ex:"El doctor puede encontrar problemas antes de que tú los notes. ¡Como un chequeo de salud!",tip:"Si ves borroso o te cansas leyendo, ¡díselo a un adulto pronto!"}
+];
+
+var phrases = {
+  correct:["¡Genial! ¡Lo sabías! 🎉","¡Increíble! ¡Muy listo! ⭐","¡Perfecto! ¡Así se hace! 🏆","¡Woohoo! ¡Excelente! 🎊"],
+  close:  ["¡Casi! ¡Sigue así! 💪","¡Estuviste muy cerca! 😊","¡Bien pensado! 👍"],
+  wrong:  ["¡No te rindas! 😅","¡Aprendemos juntos! 🤗","¡La próxima la tienes! 💫"],
+  think:  ["¿Qué elegirás? 🤔","¡Piensa bien! 💭","¿Rojo, amarillo o verde? 🚦","¡Tú lo sabes! 😉"]
+};
+
+function rnd(arr){ return arr[Math.floor(Math.random()*arr.length)]; }
+function shuffle(arr){ var a=arr.slice(); for(var i=a.length-1;i>0;i--){var j=Math.floor(Math.random()*(i+1));var t=a[i];a[i]=a[j];a[j]=t;} return a; }
+
+// ── AUDIO ──────────────────────────────────────────────────────────────────
+var AC;
+function initAudio(){
+  if(!AC) AC = new (window.AudioContext||window.webkitAudioContext)();
+}
+function beep(freq,type,dur,vol){
+  try{
+    if(!AC) return;
+    var o=AC.createOscillator(), g=AC.createGain();
+    o.type=type||'sine'; o.frequency.value=freq;
+    g.gain.setValueAtTime(vol||0.25, AC.currentTime);
+    g.gain.exponentialRampToValueAtTime(0.001, AC.currentTime+dur);
+    o.connect(g); g.connect(AC.destination);
+    o.start(); o.stop(AC.currentTime+dur);
+  }catch(e){}
+}
+function sndOk()  { beep(523,'sine',0.1); setTimeout(function(){beep(659,'sine',0.1);},100); setTimeout(function(){beep(784,'sine',0.2);},200); }
+function sndNear(){ beep(440,'triangle',0.15); setTimeout(function(){beep(494,'triangle',0.15);},140); }
+function sndBad() { beep(220,'sawtooth',0.12); setTimeout(function(){beep(196,'sawtooth',0.2);},110); }
+function sndTick(){ beep(800,'square',0.04,0.07); }
+function sndEnd() { [523,659,784,1047].forEach(function(f,i){ setTimeout(function(){beep(f,'sine',0.18);},i*110); }); }
+
+// ── ESTADO ─────────────────────────────────────────────────────────────────
+var TOTAL=10, SEC=15, CIRC=2*Math.PI*22;
+var gs={};
+
+function showScreen(id){
+  ['s-start','s-game','s-result'].forEach(function(s){
+    var el=document.getElementById(s);
+    el.classList.remove('active');
+    el.style.display='none';
+  });
+  var el=document.getElementById(id);
+  el.style.display='flex';
+  el.classList.add('active');
+}
+
+function showBubble(id,msg,ms){
+  var b=document.getElementById(id);
+  b.textContent=msg; b.classList.add('on');
+  if(ms) setTimeout(function(){b.classList.remove('on');},ms);
+}
+
+function setTL(col){
+  document.getElementById('tm-r').className='tm-light'+(col==='red'?' on-r':'');
+  document.getElementById('tm-y').className='tm-light'+(col==='yellow'?' on-y':'');
+  document.getElementById('tm-g').className='tm-light'+(col==='green'?' on-g':'');
+}
+
+function updateHUD(){
+  document.getElementById('score-val').textContent=gs.score;
+  var h=''; for(var i=0;i<3;i++) h+=(i<gs.lives?'❤️':'🖤');
+  document.getElementById('lives').textContent=h;
+}
+
+function updateTimer(t){
+  document.getElementById('t-num').textContent=t;
+  var r=document.getElementById('t-ring');
+  r.style.strokeDashoffset=CIRC*(1-t/SEC);
+  r.style.stroke=t<=5?'var(--red)':t<=9?'var(--yellow)':'var(--green)';
+  document.getElementById('t-num').style.color=t<=5?'var(--red)':t<=9?'var(--yellow)':'var(--text)';
+}
+
+function startTimer(){
+  clearInterval(gs.timer);
+  gs.tl=SEC; updateTimer(SEC);
+  gs.timer=setInterval(function(){
+    gs.tl--;
+    updateTimer(gs.tl);
+    if(gs.tl>0 && gs.tl<=5) sndTick();
+    if(gs.tl<=0){ clearInterval(gs.timer); if(!gs.answered) timeOut(); }
+  },1000);
+}
+
+function resultType(u,c){
+  if(u===c) return 'exact';
+  var o=['red','yellow','green'];
+  return Math.abs(o.indexOf(u)-o.indexOf(c))===1?'close':'wrong';
+}
+
+// ── JUEGO ─────────────────────────────────────────────────────────────────
+function startGame(){
+  initAudio();
+  gs={ qs:shuffle(QS).slice(0,TOTAL), idx:0, score:0, lives:3, exact:0, close:0, wrong:0, answered:false, timer:null, tl:SEC };
+
+  // Estrellas
+  var sr=document.getElementById('star-row'); sr.innerHTML='';
+  for(var i=0;i<TOTAL;i++){
+    var s=document.createElement('div');
+    s.className='star-item'; s.textContent='⭐'; s.id='st-'+i;
+    sr.appendChild(s);
+  }
+
+  document.getElementById('tl-mini').style.display='flex';
+  showScreen('s-game');
+  loadQ();
+}
+
+function loadQ(){
+  var q=gs.qs[gs.idx];
+  gs.answered=false;
+  updateHUD();
+  document.getElementById('q-num').textContent='Pregunta '+(gs.idx+1)+' de '+TOTAL;
+  document.getElementById('q-emoji').textContent=q.e;
+  document.getElementById('q-cat').textContent='// '+q.c;
+  document.getElementById('q-title').textContent=q.t;
+  document.getElementById('q-desc').textContent=q.d;
+  setTL(null);
+
+  var card=document.getElementById('q-card');
+  card.style.animation='none'; void card.offsetWidth;
+  card.style.animation='card-in 0.45s cubic-bezier(.22,1,.36,1) both';
+
+  setTimeout(function(){ showBubble('bub-g', rnd(phrases.think), 3000); },400);
+  startTimer();
+}
+
+function classify(col){
+  if(gs.answered) return;
+  gs.answered=true;
+  clearInterval(gs.timer);
+  setTL(col);
+
+  var q=gs.qs[gs.idx];
+  var rt=resultType(col,q.col);
+  var pts=0;
+
+  if(rt==='exact'){
+    pts=Math.max(Math.ceil(gs.tl*(100/SEC)),30);
+    gs.score+=pts; gs.exact++;
+    sndOk(); confetti(); sparkles(col);
+    document.getElementById('st-'+gs.idx).classList.add('got');
+    animMascot('happy'); showBubble('bub-g', rnd(phrases.correct), 3000);
+  } else if(rt==='close'){
+    pts=30; gs.score+=pts; gs.close++;
+    sndNear();
+    document.getElementById('st-'+gs.idx).style.filter='sepia(1)brightness(0.9)';
+    document.getElementById('st-'+gs.idx).classList.add('got');
+    showBubble('bub-g', rnd(phrases.close), 3000);
+  } else {
+    gs.lives--; gs.wrong++;
+    sndBad();
+    var card=document.getElementById('q-card');
+    card.style.animation='none'; void card.offsetWidth;
+    card.style.animation='card-shake 0.45s ease';
+    animMascot('sad'); showBubble('bub-g', rnd(phrases.wrong), 3000);
+  }
+
+  updateHUD();
+  setTimeout(function(){ showFeedback(q,rt,pts); },650);
+}
+
+function animMascot(type){
+  var m=document.getElementById('mascot-g');
+  m.classList.remove('happy','sad');
+  void m.offsetWidth;
+  m.classList.add(type);
+  setTimeout(function(){ m.classList.remove(type); },600);
+}
+
+function timeOut(){
+  gs.lives--; gs.wrong++;
+  sndBad(); updateHUD();
+  var q=gs.qs[gs.idx];
+  showBubble('bub-g','¡Se acabó el tiempo! ⏰',3000);
+  setTimeout(function(){ showFeedback(q,'wrong',0,true); },400);
+}
+
+var colLabel={red:'🔴 ¡MALO para los ojos!',yellow:'🟡 ¡Con mucho cuidado!',green:'🟢 ¡BUENO para los ojos!'};
+var colCss  ={red:'r',yellow:'y',green:'g'};
+
+function showFeedback(q,rt,pts,timeout){
+  document.getElementById('fd-r').className='fb-dot'+(q.col==='red'?' on-r':'');
+  document.getElementById('fd-y').className='fb-dot'+(q.col==='yellow'?' on-y':'');
+  document.getElementById('fd-g').className='fb-dot'+(q.col==='green'?' on-g':'');
+
+  document.getElementById('fb-icon').textContent = timeout?'⏰':(rt==='exact'?'🥳':rt==='close'?'😅':'😢');
+
+  var vmap={exact:'¡¡CORRECTO!! 🎉',close:'¡Casi lo tienes! ⚠️',wrong:'¡Era diferente! ❌'};
+  var fv=document.getElementById('fb-verdict');
+  fv.textContent=timeout?'¡Se acabó el tiempo! ⏰':vmap[rt];
+  fv.className='fb-verdict '+(rt==='exact'?'exact':rt==='close'?'close':'wrong');
+
+  var fb=document.getElementById('fb-badge');
+  fb.className='fb-badge '+colCss[q.col];
+  fb.textContent='Respuesta: '+colLabel[q.col];
+
+  document.getElementById('fb-title').textContent=q.t;
+  document.getElementById('fb-exp').textContent=q.ex;
+  document.getElementById('fb-tip').textContent=q.tip;
+
+  var fp=document.getElementById('fb-pts');
+  if(rt==='exact'){ fp.textContent='+'+pts+' ⭐'; fp.className='fb-pts exact'; }
+  else if(rt==='close'){ fp.textContent='+30 ⭐'; fp.className='fb-pts close'; }
+  else { fp.textContent=timeout?'¡El tiempo voló!':'-1 ❤️'; fp.className='fb-pts wrong'; }
+
+  document.getElementById('fb-card').className='fb-card '+(rt==='exact'?'exact':rt==='close'?'close':'wrong');
+  document.getElementById('overlay').classList.add('on');
+}
+
+function nextQ(){
+  document.getElementById('overlay').classList.remove('on');
+  gs.idx++;
+  if(gs.lives<=0||gs.idx>=TOTAL) endGame();
+  else loadQ();
+}
+
+function endGame(){
+  clearInterval(gs.timer);
+  document.getElementById('tl-mini').style.display='none';
+  sndEnd(); confetti();
+
+  var pct=Math.round((gs.exact/TOTAL)*100);
+  document.getElementById('res-score').textContent=gs.score;
+  document.getElementById('st-e').textContent=gs.exact;
+  document.getElementById('st-c').textContent=gs.close;
+  document.getElementById('st-w').textContent=gs.wrong;
+
+  var title,msg,dot,scol,stars;
+  if(pct>=80){
+    title='¡¡ERES UN CAMPEÓN!! 🏆'; stars='🌟🌟🌟';
+    msg='¡Eres un experto en cuidar tus ojos! ¡Oculín está muy orgulloso de ti! 👁️';
+    dot='<div class="res-tl-dot" style="background:var(--green);box-shadow:0 0 20px rgba(0,200,83,0.6)"></div>';
+    scol='var(--green)';
+  } else if(pct>=50){
+    title='¡MUY BIEN! ⭐'; stars='⭐⭐';
+    msg='¡Vas por buen camino! Sigue aprendiendo sobre el cuidado de tus ojos. ¡Tú puedes! 💪';
+    dot='<div class="res-tl-dot" style="background:var(--yellow);box-shadow:0 0 20px rgba(255,179,0,0.6)"></div>';
+    scol='var(--yellow)';
+  } else {
+    title='¡SIGUE PRACTICANDO! 💪'; stars='⭐';
+    msg='¡No te rindas! Ahora sabes más sobre cómo cuidar tus ojos. ¡Vuelve a intentarlo! 🌈';
+    dot='<div class="res-tl-dot" style="background:var(--red);box-shadow:0 0 20px rgba(255,71,87,0.6)"></div>';
+    scol='var(--red)';
+  }
+
+  document.getElementById('res-title').textContent=title;
+  document.getElementById('res-msg').textContent=msg;
+  document.getElementById('res-tl').innerHTML=dot;
+  document.getElementById('res-score').style.color=scol;
+  document.getElementById('res-stars').textContent=stars;
+  showScreen('s-result');
+}
+
+function restartGame(){ startGame(); }
+
+// ── EFECTOS ────────────────────────────────────────────────────────────────
+function confetti(){
+  var cols=['#ff4757','#ffb300','#00c853','#2979ff','#9c27b0','#ff6b81','#69f0ae'];
+  for(var i=0;i<55;i++){
+    (function(){
+      var p=document.createElement('div');
+      p.className='confetti';
+      p.style.left=Math.random()*100+'vw';
+      p.style.background=cols[Math.floor(Math.random()*cols.length)];
+      var w=6+Math.random()*8; p.style.width=w+'px'; p.style.height=w+'px';
+      if(Math.random()>0.5) p.style.borderRadius='50%';
+      var dur=1.4+Math.random()*2;
+      p.style.animationDuration=dur+'s';
+      p.style.animationDelay=(Math.random()*0.9)+'s';
+      document.body.appendChild(p);
+      setTimeout(function(){if(p.parentNode)p.parentNode.removeChild(p);},(dur+1)*1000);
+    })();
+  }
+}
+
+function sparkles(col){
+  var map={red:['🔴','💥','🎯'],yellow:['🟡','⚡','✨'],green:['🟢','🌟','⭐','🎉']};
+  var icons=map[col]||['✨'];
+  for(var i=0;i<8;i++){
+    (function(){
+      var p=document.createElement('div');
+      p.className='sparkle';
+      p.textContent=icons[Math.floor(Math.random()*icons.length)];
+      p.style.left=(20+Math.random()*60)+'vw';
+      p.style.top=(30+Math.random()*40)+'vh';
+      p.style.animationDelay=(Math.random()*0.3)+'s';
+      document.body.appendChild(p);
+      setTimeout(function(){if(p.parentNode)p.parentNode.removeChild(p);},1100);
+    })();
+  }
+}
+
+// ── SEMÁFORO ANIMADO INICIO ────────────────────────────────────────────────
+(function(){
+  var seq=[['on-r','',''],['','on-y',''],['','','on-g']];
+  var i=0;
+  function step(){
+    var r=document.getElementById('dl-r'), y=document.getElementById('dl-y'), g=document.getElementById('dl-g');
+    if(!r) return;
+    r.className='tl-bulb '+(seq[i][0]?'on '+seq[i][0]:'');
+    y.className='tl-bulb '+(seq[i][1]?'on '+seq[i][1]:'');
+    g.className='tl-bulb '+(seq[i][2]?'on '+seq[i][2]:'');
+    i=(i+1)%seq.length;
+  }
+  step();
+  setInterval(step,950);
+})();
+
+// ── EVENTOS ────────────────────────────────────────────────────────────────
+document.getElementById('btn-play').addEventListener('click', startGame);
+document.getElementById('btn-next').addEventListener('click', nextQ);
+document.getElementById('btn-restart').addEventListener('click', restartGame);
+document.getElementById('b-r').addEventListener('click', function(){ classify('red'); });
+document.getElementById('b-y').addEventListener('click', function(){ classify('yellow'); });
+document.getElementById('b-g').addEventListener('click', function(){ classify('green'); });
+</script>
+</body>
+</html>
